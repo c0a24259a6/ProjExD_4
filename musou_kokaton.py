@@ -242,6 +242,37 @@ class Score:
         screen.blit(self.image, self.rect)
 
 
+class Shield(pg.sprite.Sprite):
+    """
+    防御壁の設定に関するクラス
+    こうかとんの向きに合わせた防御壁
+    防御壁のサイズ
+    """
+    def __init__(self,bird,life=400):
+        super().__init__()
+        # 壁の大きさ（こうかとんの2倍の高さ）
+        w, h = 20, bird.rect.height * 2
+        self.image = pg.Surface((w, h))
+        pg.draw.rect(self.image, (0, 0, 255), (0, 0, w, h))
+        #こうかとんの向き
+        vx, vy = bird.dire
+        angle = math.degrees(math.atan2(-vy, vx))
+        self.image = pg.transform.rotate(self.image, angle)
+        self.rect = self.image.get_rect()
+
+        # 向いている方向に1体分ずらして配置
+        kouka_x = bird.rect.centerx + vx * bird.rect.width
+        kouka_y = bird.rect.centery + vy * bird.rect.height
+        self.rect.center = (kouka_x, kouka_y)
+
+        self.life = life
+
+    def update(self):   
+        self.life -= 1
+        if self.life < 0:
+            self.kill() #防御壁を削除する
+
+
 def main():
     pg.display.set_caption("真！こうかとん無双")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
@@ -253,6 +284,7 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
+    shields = pg.sprite.Group()
 
     tmr = 0
     clock = pg.time.Clock()
@@ -289,7 +321,22 @@ def main():
             time.sleep(2)
             return
 
-        bird.update(key_lst, screen)
+        bird.update(key_lst, screen)     
+        """
+        防御壁発動
+        """
+        key_lst = pg.key.get_pressed()
+        if key_lst[pg.K_s] and score.value > 50 and len(shields) == 0:
+            score.value -= 50
+            shields.add(Shield(bird))
+
+        """
+        防御壁と爆弾の衝突処理
+        """
+        for bomb in pg.sprite.groupcollide(bombs, shields, True, False).keys():
+            exps.add(Explosion(bomb, 50))
+        shields.draw(screen)
+        shields.update()
         beams.update()
         beams.draw(screen)
         emys.update()
